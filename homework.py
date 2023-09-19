@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from http import HTTPStatus
 
 import exceptions
@@ -114,3 +115,68 @@ def check_response(response):
         raise IndexError('Список с домашними работами пуст')
 
     return homeworks
+
+
+def parse_status(homework):
+    """Извлекает статус домашней работы."""
+    homework_name = homework.get('homework_name')
+    hw_status = homework.get('status')
+
+    if not homework_name:
+        raise KeyError('Отсутствует ключ "homework_name"')
+
+    verdict = HOMEWORK_VERDICTS.get(hw_status)
+
+    if verdict is None:
+        raise KeyError('Статуса нет в словаре вердиктов')
+
+    return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+
+
+def main():
+    """Основная логика работы бота."""
+    if not check_tokens():
+        return
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    timestamp = int(time.time())
+    first_status = ''
+    error_message = ''
+
+    while True:
+        try:
+            response = get_api_answer(timestamp)
+            check_response(response)
+            logger.info(LIST_RECEIVED_MESSAGE)
+            new_status = parse_status(response['homeworks'][0])
+
+            if new_status != first_status:
+                sent_successfully = send_message(bot, new_status)
+
+                # Добавляем сообщение в отправленные.
+                # Только при успешной отправке
+                if sent_successfully:
+                    first_status = new_status
+
+        except KeyError as key_error:
+            error_message = f'{ERROR_MESSAGE} {key_error}'
+            logger.error(error_message)
+            send_message(bot, error_message)
+
+        except exceptions.SendMessageException as send_error:
+            error_message = f'{SEND_ERROR_MESSAGE} {send_error}'
+            logger.error(error_message)
+
+        except Exception as error:
+            message = f'Сбой в работе программы: {error}'
+            logger.error(message)
+
+            if message != error_message:
+                send_message(bot, message)
+
+        finally:
+            timestamp = response.get('current_date', timestamp)
+            time.sleep(RETRY_PERIOD)
+
+
+if __name__ == '__main__':
+    main()
