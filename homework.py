@@ -152,10 +152,10 @@ def main():
             if new_status != first_status:
                 sent_successfully = send_message(bot, new_status)
 
-                # Добавляем сообщение в отправленные.
-                # Только при успешной отправке
+                # Сбросим сообщение об ошибке после успешной отправки
                 if sent_successfully:
                     first_status = new_status
+                    error_message = ''  # Сбросить error_message после успешной отправки
 
         except KeyError as key_error:
             error_message = f'{ERROR_MESSAGE} {key_error}'
@@ -172,11 +172,8 @@ def main():
 
             if message != error_message:
                 send_message(bot, message)
+                error_message = ''  # Сбросить error_message после отправки сообщения об ошибке
 
         finally:
             timestamp = response.get('current_date', timestamp)
             time.sleep(RETRY_PERIOD)
-
-
-if __name__ == '__main__':
-    main()
