@@ -173,8 +173,7 @@ def main():
 
             if message != error_message:
                 send_message(bot, message)
-                error_message = ''
-                # Сбросить error_message после отправки сообщения об ошибке
+                error_message = message
 
         finally:
             timestamp = response.get('current_date', timestamp)
