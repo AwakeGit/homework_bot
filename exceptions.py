@@ -1,18 +1,22 @@
-class EndpointError(Exception):
-    """Недоступен Эндпоинт."""
+class WrongHttpStatus(Exception):
+    """Ошибка. HTTP статус != 200."""
+
     pass
 
 
-class SendMessageException(Exception):
-    """Ошибка отправки сообщения в TELEGRAM."""
+class SendMessageError(Exception):
+    """Ошибка отправки сообщения."""
+
     pass
 
 
-class JsonError(Exception):
-    """Невозможно получить данные в JSON"""
+class UnknownHomeworkStatus(Exception):
+    """Ошибка. Неизвестный статус домашней работы."""
+
     pass
 
 
-class StatusCodeException(Exception):
-    """Статус код ответа != 200"""
+class ResponceKeyError(Exception):
+    """Ошибка. В ответе отсутсвует ключ Homeworks."""
+
     pass
