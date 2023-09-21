@@ -132,6 +132,19 @@ def parse_status(homework):
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
+def handle_error(error, error_message, bot):
+    """Обработка ошибок и отправка сообщений."""
+    new_error_message = f'Сбой в работе программы: {error}'
+    logger.error(new_error_message)
+
+    if new_error_message != error_message:
+        sent_successfully = send_message(bot, new_error_message)
+        if sent_successfully:
+            error_message = new_error_message
+
+    return error_message
+
+
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
@@ -155,30 +168,13 @@ def main():
                     first_status = new_status
                     error_message = ''
 
-        except KeyError as key_error:
-            new_error_message = f'{ERROR_MESSAGE} {key_error}'
-            logger.error(new_error_message)
-            if new_error_message != error_message:
-                sent_successfully = send_message(bot, new_error_message)
-                if sent_successfully:
-                    error_message = new_error_message
-
-        except exceptions.SendMessageException as send_error:
-            new_error_message = f'{SEND_ERROR_MESSAGE} {send_error}'
-            logger.error(new_error_message)
-            if new_error_message != error_message:
-                sent_successfully = send_message(bot, new_error_message)
-                if sent_successfully:
-                    error_message = new_error_message
-
         except Exception as error:
-            new_error_message = f'Сбой в работе программы: {error}'
-            logger.error(new_error_message)
-            if new_error_message != error_message:
-                sent_successfully = send_message(bot, new_error_message)
-                if sent_successfully:
-                    error_message = new_error_message
+            error_message = handle_error(error, error_message, bot)
 
         finally:
             timestamp = response.get('current_date', timestamp)
             time.sleep(RETRY_PERIOD)
+
+
+if __name__ == "__main__":
+    main()
