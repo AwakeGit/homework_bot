@@ -1,13 +1,14 @@
-from datetime import datetime
-from dotenv import load_dotenv
-import exceptions
-from http import HTTPStatus
 import json
 import logging
 import os
-import requests
 import sys
 import time
+from datetime import datetime
+from http import HTTPStatus
+
+from dotenv import load_dotenv
+import exceptions
+import requests
 from telegram import Bot, TelegramError
 
 load_dotenv()
@@ -28,7 +29,7 @@ HOMEWORK_VERDICTS = {
 
 
 def check_tokens():
-    """Проверка доступности переменных окружения."""
+    """Проверяет доступность переменных окружения."""
     return all([TELEGRAM_TOKEN, PRACTICUM_TOKEN, TELEGRAM_CHAT_ID])
 
 
@@ -40,10 +41,11 @@ def send_message(bot, message):
     except TelegramError as error:
         error_message = f'Не удалось отправить сообщение {error}'
         logging.error(error_message)
-        raise TelegramError(error_message)
+        return False
     else:
-        logging.info(f'Сообщение отправлено {message}')
+        logging.info(f'Сообщение отправлено: {message}')
         print(f'[INFO] Сообщение отправлено: {message}')
+        return True
 
 
 def get_api_answer(timestamp):
@@ -71,7 +73,7 @@ def get_api_answer(timestamp):
 
 
 def check_response(response):
-    """Проверить валидность ответа."""
+    """Проверяет валидность ответа."""
     logging.debug('Начало проверки')
     if not isinstance(response, dict):
         raise TypeError('Ошибка в типе ответа API')
@@ -99,6 +101,39 @@ def parse_status(homework):
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
+def send_status_message(bot, current_timestamp):
+    """Отправляет сообщение о статусе проверки домашней работы в Telegram."""
+    response = get_api_answer(current_timestamp)
+    homeworks = check_response(response)
+    current_timestamp = response.get('current_date', int(time.time()))
+    if homeworks:
+        homework = homeworks[0]
+        timestamp = datetime.fromtimestamp(
+            current_timestamp
+        ).strftime('%Y-%m-%d %H:%M:%S')
+        verdict = parse_status(homework)
+        if send_message(bot, f'[{timestamp}] {verdict}'):
+            return verdict, True
+    return '', False
+
+
+def send_waiting_message(bot, prev_verdict, prev_verdict_sent):
+    """Отправляет сообщение ожидания новой домашней работы в Telegram."""
+    status_message = 'Ожидаем проверки новой работы.'
+    if not prev_verdict_sent:
+        if send_message(bot, status_message):
+            return status_message, True
+    return prev_verdict, prev_verdict_sent
+
+
+def send_error_message(bot, error_message, prev_verdict, prev_verdict_sent):
+    """Отправляет сообщение об ошибке в Telegram и лог."""
+    if error_message != prev_verdict and not prev_verdict_sent:
+        send_message(bot, error_message)
+        return error_message, True
+    return prev_verdict, prev_verdict_sent
+
+
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
@@ -108,35 +143,32 @@ def main():
     bot = Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     prev_verdict = ''
+    prev_verdict_sent = False
+
     while True:
         try:
-            response = get_api_answer(current_timestamp)
-            homeworks = check_response(response)
-            current_timestamp = response.get('current_date', int(time.time()))
-            if homeworks:
-                homework = homeworks[0]
-                timestamp = datetime.fromtimestamp(
-                    current_timestamp).strftime('%Y-%m-%d %H:%M:%S'
-                                                )
-                verdict = parse_status(homework)
-                send_message(bot, f'[{timestamp}] {verdict}')
+            verdict, verdict_sent = send_status_message(bot, current_timestamp)
+            if verdict_sent:
                 prev_verdict = verdict
+                prev_verdict_sent = True
                 logging.info(f'Статус получен: {verdict}')
                 print(f'[INFO] Статус получен: {verdict}')
             else:
-                status_message = 'Ожидаем проверки новой работы...'
-                logging.debug(status_message)
-                send_message(bot, status_message)
-                prev_verdict = status_message
-                logging.info(status_message)
-                print(f'[INFO] {status_message}')
+                prev_verdict, prev_verdict_sent = send_waiting_message(
+                    bot,
+                    prev_verdict,
+                    prev_verdict_sent
+                )
         except Exception as error:
             error_message = f'Сбой в работе бота: {error}'
             logging.error(error_message)
-            if error_message != prev_verdict:
-                send_message(bot, error_message)
-                prev_verdict = error_message
-                print(f'[ERROR] {error_message}')
+            prev_verdict, prev_verdict_sent = send_error_message(
+                bot,
+                error_message,
+                prev_verdict,
+                prev_verdict_sent
+            )
+            print(f'[ERROR] {error_message}')
         finally:
             time.sleep(RETRY_PERIOD)
 

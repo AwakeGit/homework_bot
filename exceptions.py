@@ -17,6 +17,6 @@ class UnknownHomeworkStatus(Exception):
 
 
 class ResponceKeyError(Exception):
-    """Ошибка. В ответе отсутсвует ключ Homeworks."""
+    """Ошибка. В ответе отсутствует ключ Homeworks."""
 
     pass
