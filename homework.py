@@ -40,7 +40,6 @@ handler = logging.StreamHandler(stream=sys.stdout)
 handler.setFormatter(Formatter(fmt='[%(asctime)s: %(levelname)s] %(message)s'))
 logger.addHandler(handler)
 
-# Переменные для повторяющихся сообщений
 LIST_RECEIVED_MESSAGE = 'Список работ получен.'
 ERROR_MESSAGE = 'Ошибка при обработке ответа API:'
 SEND_ERROR_MESSAGE = 'Ошибка при отправке сообщения:'
@@ -152,28 +151,33 @@ def main():
             if new_status != first_status:
                 sent_successfully = send_message(bot, new_status)
 
-                # Сбросим сообщение об ошибке после успешной отправки
                 if sent_successfully:
                     first_status = new_status
                     error_message = ''
-                    # Сбросить error_message после успешной отправки
 
         except KeyError as key_error:
-            error_message = f'{ERROR_MESSAGE} {key_error}'
-            logger.error(error_message)
-            send_message(bot, error_message)
+            new_error_message = f'{ERROR_MESSAGE} {key_error}'
+            logger.error(new_error_message)
+            if new_error_message != error_message:
+                sent_successfully = send_message(bot, new_error_message)
+                if sent_successfully:
+                    error_message = new_error_message
 
         except exceptions.SendMessageException as send_error:
-            error_message = f'{SEND_ERROR_MESSAGE} {send_error}'
-            logger.error(error_message)
+            new_error_message = f'{SEND_ERROR_MESSAGE} {send_error}'
+            logger.error(new_error_message)
+            if new_error_message != error_message:
+                sent_successfully = send_message(bot, new_error_message)
+                if sent_successfully:
+                    error_message = new_error_message
 
         except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            logger.error(message)
-
-            if message != error_message:
-                send_message(bot, message)
-                error_message = message
+            new_error_message = f'Сбой в работе программы: {error}'
+            logger.error(new_error_message)
+            if new_error_message != error_message:
+                sent_successfully = send_message(bot, new_error_message)
+                if sent_successfully:
+                    error_message = new_error_message
 
         finally:
             timestamp = response.get('current_date', timestamp)
