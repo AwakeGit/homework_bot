@@ -130,9 +130,9 @@ def send_message(bot, message) -> bool:
 
 def main():
     """Основная логика работы бота."""
-    logging.info('Начало работы бота')
+    logger.info('Начало работы бота')
     if not check_tokens():
-        logging.critical('Некоторые переменные окружения недоступны')
+        logger.critical('Некоторые переменные окружения недоступны')
         raise KeyError('Некоторые переменные окружения недоступны')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = 0
@@ -148,12 +148,14 @@ def main():
                     prev_report = message
                     timestamp = response.get('current_date', timestamp)
             else:
-                logging.debug('Нет новых статусов')
+                logger.debug('Нет новых статусов')
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            logging.exception(error)
+            logger.exception(error)
             if message != prev_report:
-                send_message(bot, message)
+                success = send_message(bot, message)
+                if not success:
+                    logger.error('Не удалось отправить сообщение')
                 prev_report = message
         finally:
             time.sleep(RETRY_PERIOD)
