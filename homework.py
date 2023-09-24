@@ -154,9 +154,11 @@ def main():
             logger.exception(error)
             if message != prev_report:
                 success = send_message(bot, message)
-                if not success:
+                if success:
+                    prev_report = message
+                else:
                     logger.error('Не удалось отправить сообщение')
-                prev_report = message
+
         finally:
             time.sleep(RETRY_PERIOD)
 
